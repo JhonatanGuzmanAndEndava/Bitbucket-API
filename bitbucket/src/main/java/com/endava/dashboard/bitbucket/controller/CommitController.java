@@ -1,11 +1,13 @@
 package com.endava.dashboard.bitbucket.controller;
 
 import com.endava.dashboard.bitbucket.responseobjects.*;
+import com.endava.dashboard.bitbucket.services.PullRequestService;
 import com.endava.dashboard.bitbucket.settings.BitbucketConf;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
@@ -18,6 +20,13 @@ import java.util.List;
 @RestController
 @RequestMapping(path = "/")
 public class CommitController {
+
+    private PullRequestService pullRequestService;
+
+    @Autowired
+    public CommitController(PullRequestService pullRequestService) {
+        this.pullRequestService = pullRequestService;
+    }
 
     private HttpEntity basicCredentials() {
         HttpHeaders headers = new HttpHeaders();
@@ -157,6 +166,9 @@ public class CommitController {
                     fromBranch,toBranch,repository,author,authorEmail,link);
 
             pullRequestList.add(pullRequest);
+
+            //TODO: Save to influx
+            pullRequestService.savePullRequest(pullRequest);
 
             System.out.println(pullRequest);
         }
