@@ -6,5 +6,4 @@ public interface PullRequestService extends InfluxDBConnection {
 
     void savePullRequest(PullRequest pullRequest);
 
-
 }
