@@ -1,7 +1,11 @@
 package com.endava.dashboard.bitbucket.services;
 
+import com.endava.dashboard.bitbucket.responseobjects.Project;
+import com.endava.dashboard.bitbucket.responseobjects.Repository;
+import org.springframework.http.ResponseEntity;
+
 public interface RepositoryService extends InfluxDBConnection {
 
-    void addRepository(String projectSlug, String repositorySlug);
+    ResponseEntity<Void> addRepository(Project theProject, Repository theRepository);
 
 }

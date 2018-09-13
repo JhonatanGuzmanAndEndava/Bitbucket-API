@@ -2,15 +2,14 @@ package com.endava.dashboard.bitbucket.controller;
 
 import com.endava.dashboard.bitbucket.responseobjects.Project;
 import com.endava.dashboard.bitbucket.responseobjects.Repository;
+import com.endava.dashboard.bitbucket.services.RepositoryService;
 import com.endava.dashboard.bitbucket.settings.BitbucketConf;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -23,6 +22,13 @@ import java.util.List;
 @RequestMapping(path = "/v2")
 public class BitbucketController {
 
+    private RepositoryService repositoryService;
+
+    @Autowired
+    public BitbucketController(RepositoryService repositoryService) {
+        this.repositoryService = repositoryService;
+    }
+
     private HttpEntity basicCredentials() {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Basic "+ BitbucketConf.base64Credentials);
@@ -31,13 +37,9 @@ public class BitbucketController {
 
     @GetMapping(path = "/{projectSlug}/repos/{repositorySlug}")
     @ResponseBody
-    public void addRepository(@PathVariable("projectSlug") String projectSlug,
-                              @PathVariable("repositorySlug") String repositorySlug,
-                              @RequestParam(value = "branch",required = false) String branch) {
-
-        //System.out.println(projectSlug);
-        //System.out.println(repositorySlug);
-        //System.out.println(branch);
+    public ResponseEntity<Void> addRepository(@PathVariable("projectSlug") String projectSlug,
+                                              @PathVariable("repositorySlug") String repositorySlug,
+                                              @RequestParam(value = "branch",required = false) String branch) {
 
         URI uriProject = URI.create(BitbucketConf.URL + "/projects/"+projectSlug);
         URI uriRepository = URI.create(BitbucketConf.URL + "/projects/"+projectSlug+"/repos/"+repositorySlug);
@@ -57,7 +59,7 @@ public class BitbucketController {
                 System.err.println("Unauthenticated user or unauthorized: " + e.getMessage());
             else
                 System.err.println("Something is wrong!" + e.getMessage());
-            return;
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
 
         JSONObject jsonProjectObject;
@@ -68,12 +70,11 @@ public class BitbucketController {
             jsonRepositoryObject = (JSONObject) new JSONParser().parse(repositoryResponse.getBody());
         } catch (ParseException e) {
             System.err.println("Error reading JSON String");
-            return;
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         //Project
         Long id = (Long) jsonProjectObject.get("id");
-        Long projectId = (Long) ((JSONObject)jsonProjectObject.get("project")).get("id");
         String key = (String) jsonProjectObject.get("key");
         String name = (String) jsonProjectObject.get("name");
         String description = (String) jsonProjectObject.get("description");
@@ -83,6 +84,18 @@ public class BitbucketController {
 
         project = new Project(id,key,name,description,isPublic,type,link);
 
+        //Repository
+        Long idRepository = (Long) jsonRepositoryObject.get("id");
+        Long projectId = (Long) ((JSONObject)jsonRepositoryObject.get("project")).get("id");
+        String slug = (String) jsonRepositoryObject.get("slug");
+        String nameRepository = (String) jsonRepositoryObject.get("name");
+        String state = (String) jsonRepositoryObject.get("state");
+        boolean isPublicRepository = (boolean) jsonRepositoryObject.get("public");
+        String linkRepository = (String)((JSONObject)((JSONArray)((JSONObject) jsonRepositoryObject.get("links")).get("self")).get(0)).get("href");
+
+        repository = new Repository(idRepository,projectId,slug,nameRepository,state,isPublicRepository,linkRepository);
+
+        return repositoryService.addRepository(project,repository);
 
     }
 

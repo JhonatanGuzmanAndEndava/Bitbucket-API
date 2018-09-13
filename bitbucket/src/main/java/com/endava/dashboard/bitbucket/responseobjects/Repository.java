@@ -12,7 +12,7 @@ import lombok.ToString;
 public class Repository {
 
     private Long id;
-    //private Long projectId;
+    private Long projectId;
     private String slug;
     private String name;
     private String state;

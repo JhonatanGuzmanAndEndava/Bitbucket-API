@@ -228,13 +228,14 @@ public class CommitController {
             JSONObject jo = (JSONObject) item;
 
             Long id = (Long) jo.get("id");
+            Long projectId = (Long) ((JSONObject)jo.get("project")).get("id");
             String slug = (String) jo.get("slug");
             String name = (String) jo.get("name");
             String state = (String) jo.get("state");
             boolean isPublic = (boolean) jo.get("public");
             String link = (String)((JSONObject)((JSONArray)((JSONObject) jo.get("links")).get("self")).get(0)).get("href");
 
-            Repository repository = new Repository(id,slug,name,state,isPublic,link);
+            Repository repository = new Repository(id,projectId,slug,name,state,isPublic,link);
 
             repositoryList.add(repository);
             System.out.println(repository);
@@ -295,13 +296,14 @@ public class CommitController {
             JSONObject jo = (JSONObject) item;
 
             Long id = (Long) jo.get("id");
+            Long projectId = (Long) ((JSONObject)jo.get("project")).get("id");
             String slug = (String) jo.get("slug");
             String name = (String) jo.get("name");
             String state = (String) jo.get("state");
             boolean isPublic = (boolean) jo.get("public");
             String link = (String)((JSONObject)((JSONArray)((JSONObject) jo.get("links")).get("self")).get(0)).get("href");
 
-            Repository repository = new Repository(id,slug,name,state,isPublic,link);
+            Repository repository = new Repository(id,projectId,slug,name,state,isPublic,link);
 
             repositoryList.add(repository);
             System.out.println(repository);
@@ -350,13 +352,14 @@ public class CommitController {
         JSONObject jo = jsonObject;
 
         Long id = (Long) jo.get("id");
+        Long projectId = (Long) ((JSONObject)jo.get("project")).get("id");
         String slug = (String) jo.get("slug");
         String name = (String) jo.get("name");
         String state = (String) jo.get("state");
         boolean isPublic = (boolean) jo.get("public");
         String link = (String)((JSONObject)((JSONArray)((JSONObject) jo.get("links")).get("self")).get(0)).get("href");
 
-        Repository repository = new Repository(id,slug,name,state,isPublic,link);
+        Repository repository = new Repository(id,projectId,slug,name,state,isPublic,link);
 
         System.out.println(repository);
 
