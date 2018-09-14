@@ -12,8 +12,9 @@ import lombok.ToString;
 public class PullRequest {
 
     private Long id;
+    private Long projectId;
+    private Long repositoryId;
     private String title;
-    private String description;
     private String state;
     private Long createdDateTimestamp;
     private Long updatedDateTimestamp;
@@ -21,7 +22,6 @@ public class PullRequest {
     private String toBranch;
     private String repository;
     private String author;
-    private String authorEmail;
     private String link;
 
 

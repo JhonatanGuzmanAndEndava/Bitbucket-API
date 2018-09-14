@@ -151,7 +151,6 @@ public class CommitController {
 
             Long id = (Long) jo.get("id");
             String title = (String) jo.get("title");
-            String description = (String) jo.get("title");
             String state = (String) jo.get("state");
             Long createdDateTimestamp = (Long) jo.get("createdDate");
             Long updatedDateTimestamp = (Long) jo.get("updatedDate");
@@ -159,11 +158,10 @@ public class CommitController {
             String toBranch = (String)((JSONObject) jo.get("toRef")).get("id");
             String repository = (String)((JSONObject)((JSONObject) jo.get("toRef")).get("repository")).get("slug");
             String author = (String)((JSONObject)((JSONObject) jo.get("author")).get("user")).get("name");
-            String authorEmail = (String)((JSONObject)((JSONObject) jo.get("author")).get("user")).get("emailAddress");
             String link = (String)((JSONObject)((JSONArray)((JSONObject) jo.get("links")).get("self")).get(0)).get("href");
 
-            PullRequest pullRequest = new PullRequest(id,title,description,state,createdDateTimestamp,updatedDateTimestamp,
-                    fromBranch,toBranch,repository,author,authorEmail,link);
+            PullRequest pullRequest = new PullRequest(id,0L,0L,title,state,createdDateTimestamp,updatedDateTimestamp,
+                    fromBranch,toBranch,repository,author,link);
 
             pullRequestList.add(pullRequest);
 
@@ -421,7 +419,7 @@ public class CommitController {
             Long committerTimestamp = (Long) jo.get("committerTimestamp");
             String message = (String) jo.get("message");
 
-            Commit commit = new Commit(id,displayId,author,authorEmail,committerTimestamp,message);
+            Commit commit = new Commit(id,displayId,0L,0L,author,authorEmail,committerTimestamp,message);
 
             commitList.add(commit);
             System.out.println(commit);

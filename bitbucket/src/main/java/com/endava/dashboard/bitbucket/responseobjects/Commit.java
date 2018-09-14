@@ -13,6 +13,8 @@ public class Commit {
 
     private String id;
     private String displayId;
+    private Long projectId;
+    private Long repositoryId;
     private String author;
     private String authorEmail;
     private Long committerTimestamp;
