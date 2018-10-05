@@ -17,7 +17,7 @@ public class PullRequestServiceImpl implements PullRequestService {
     private InfluxDB influxDB;
 
     public PullRequestServiceImpl() {
-        influxDB = InfluxDBFactory.connect(url+":"+port, username, password);
+        influxDB = InfluxDBFactory.connect(URL +":"+ PORT, USERNAME, PASSWORD);
     }
 
     @Override
@@ -32,11 +32,11 @@ public class PullRequestServiceImpl implements PullRequestService {
             return;
         }
 
-        //QueryResult queryResult = influxDB.query(new Query("SHOW DATABASES",database));
+        //QueryResult queryResult = influxDB.query(new Query("SHOW DATABASES",DATABASE));
         //System.out.println(queryResult.toString());
 
         BatchPoints batchPoints = BatchPoints
-                .database(database)
+                .database(DATABASE)
                 .tag("async", "true")
                 .consistency(InfluxDB.ConsistencyLevel.ALL)
                 .build();
@@ -75,7 +75,7 @@ public class PullRequestServiceImpl implements PullRequestService {
         }
 
         BatchPoints batchPoints = BatchPoints
-                .database(database)
+                .database(DATABASE)
                 .tag("async", "true")
                 .consistency(InfluxDB.ConsistencyLevel.ALL)
                 .build();

@@ -14,6 +14,8 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -21,7 +23,9 @@ import org.springframework.web.client.RestTemplate;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
+@EnableScheduling
 @RestController
 @RequestMapping(path = "/v2")
 public class BitbucketController {
@@ -39,13 +43,13 @@ public class BitbucketController {
 
     private HttpEntity basicCredentials() {
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Basic "+ BitbucketConf.base64Credentials);
+        headers.add("Authorization", "Basic "+ BitbucketConf.BASE_64_CREDENTIALS);
         return new HttpEntity<>(headers);
     }
 
-    public List<Commit> getCommits(String project, String repo, Long projectId, Long repositoryId) {
+    private List<Commit> getCommits(String project, String repo, Long projectId, Long repositoryId) {
 
-        URI uri = URI.create(BitbucketConf.URL + "/projects/"+project+"/repos/"+repo+"/commits?limit=10&permission=REPO_WRITE");
+        URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/commits?limit=1000&permission=REPO_WRITE");
 
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> s;
@@ -96,9 +100,9 @@ public class BitbucketController {
         return commitList;
     }
 
-    public List<PullRequest> getPullRequests(String project, String repo, Long projectId, Long repositoryId) {
+    private List<PullRequest> getPullRequests(String project, String repo, Long projectId, Long repositoryId) {
 
-        URI uri = URI.create(BitbucketConf.URL + "/projects/"+project+"/repos/"+repo+"/pull-requests?limit=10&state=ALL&role=AUTHOR");
+        URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/pull-requests?limit=10&state=ALL&role=AUTHOR");
 
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> s;
@@ -154,14 +158,14 @@ public class BitbucketController {
         return pullRequestList;
     }
 
-    @GetMapping(path = "/{projectSlug}/repos/{repositorySlug}")
+    @PostMapping(path = "/{projectSlug}/repos/{repositorySlug}")
     @ResponseBody
     public ResponseEntity<Void> addRepository(@PathVariable("projectSlug") String projectSlug,
                                               @PathVariable("repositorySlug") String repositorySlug,
                                               @RequestParam(value = "branch",required = false) String branch) {
 
-        URI uriProject = URI.create(BitbucketConf.URL + "/projects/"+projectSlug);
-        URI uriRepository = URI.create(BitbucketConf.URL + "/projects/"+projectSlug+"/repos/"+repositorySlug);
+        URI uriProject = URI.create(BitbucketConf.API_URL + "/projects/"+projectSlug);
+        URI uriRepository = URI.create(BitbucketConf.API_URL + "/projects/"+projectSlug+"/repos/"+repositorySlug);
 
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> projectResponse;
@@ -227,5 +231,14 @@ public class BitbucketController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @GetMapping(path = "/grettings")
+    @ResponseBody
+    @Scheduled(cron = "0/5 * * ? * *")
+    public void grettings() {
+        System.out.println("Me estoy ejecutando :v x"+value.getAndIncrement());
+    }
+
+    private AtomicInteger value = new AtomicInteger();
 
 }

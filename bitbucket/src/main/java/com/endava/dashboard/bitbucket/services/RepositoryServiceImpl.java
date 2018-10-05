@@ -19,7 +19,7 @@ public class RepositoryServiceImpl implements RepositoryService {
     private InfluxDB influxDB;
 
     public RepositoryServiceImpl() {
-        influxDB = InfluxDBFactory.connect(url+":"+port, username, password);
+        influxDB = InfluxDBFactory.connect(URL +":"+ PORT, USERNAME, PASSWORD);
     }
 
     @Override
@@ -35,7 +35,7 @@ public class RepositoryServiceImpl implements RepositoryService {
         }
 
         BatchPoints batchPoints = BatchPoints
-                .database(database)
+                .database(DATABASE)
                 .tag("async", "true")
                 .consistency(InfluxDB.ConsistencyLevel.ALL)
                 .build();

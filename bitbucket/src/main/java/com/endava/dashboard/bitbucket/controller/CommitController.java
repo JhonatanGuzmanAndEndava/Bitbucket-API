@@ -30,7 +30,7 @@ public class CommitController {
 
     private HttpEntity basicCredentials() {
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Basic "+BitbucketConf.base64Credentials);
+        headers.add("Authorization", "Basic "+BitbucketConf.BASE_64_CREDENTIALS);
         return new HttpEntity<>(headers);
     }
 
@@ -42,7 +42,7 @@ public class CommitController {
     @ResponseBody
     public List<Project> projects() {
 
-        URI uri = URI.create(BitbucketConf.URL + "/projects?limit=100");
+        URI uri = URI.create(BitbucketConf.API_URL + "/projects?limit=100");
 
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> s;
@@ -110,7 +110,7 @@ public class CommitController {
     @ResponseBody
     public List<PullRequest> pullRequests() {
 
-        URI uri = URI.create(BitbucketConf.URL + "/dashboard/pull-requests?limit=100&role=AUTHOR");
+        URI uri = URI.create(BitbucketConf.API_URL + "/dashboard/pull-requests?limit=100&role=AUTHOR");
 
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> s;
@@ -186,7 +186,7 @@ public class CommitController {
     @ResponseBody
     public List<Repository> repos() {
 
-        URI uri = URI.create(BitbucketConf.URL + "/repos?limit=100&permission=REPO_WRITE");
+        URI uri = URI.create(BitbucketConf.API_URL + "/repos?limit=100&permission=REPO_WRITE");
 
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> s;
@@ -254,7 +254,7 @@ public class CommitController {
     @ResponseBody
     public List<Repository> repositories(@PathVariable("project") String project) {
 
-        URI uri = URI.create(BitbucketConf.URL + "/projects/"+project+"/repos?limit=100&permission=REPO_WRITE");
+        URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos?limit=100&permission=REPO_WRITE");
 
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> s;
@@ -323,7 +323,7 @@ public class CommitController {
     public Repository repositoryInfo(@PathVariable("project") String project,
                                    @PathVariable("repositorySlug") String repo) {
 
-        URI uri = URI.create(BitbucketConf.URL + "/projects/"+project+"/repos/"+repo+"?permission=REPO_WRITE");
+        URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"?permission=REPO_WRITE");
 
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> s;
@@ -373,7 +373,7 @@ public class CommitController {
     public List<Commit> repositoryCommits(@PathVariable("project") String project,
                                           @PathVariable("repositorySlug") String repo) {
 
-        URI uri = URI.create(BitbucketConf.URL + "/projects/"+project+"/repos/"+repo+"/commits?limit=100&permission=REPO_WRITE");
+        URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/commits?limit=100&permission=REPO_WRITE");
 
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> s;
@@ -441,7 +441,7 @@ public class CommitController {
     public List<Branch> repositoryBranches(@PathVariable("project") String project,
                                            @PathVariable("repositorySlug") String repo) {
 
-        URI uri = URI.create(BitbucketConf.URL + "/projects/"+project+"/repos/"+repo+"/branches?limit=100&permission=REPO_WRITE");
+        URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/branches?limit=100&permission=REPO_WRITE");
 
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> s;
