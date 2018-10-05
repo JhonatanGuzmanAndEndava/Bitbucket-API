@@ -25,4 +25,7 @@ public class BitbucketApplication {
                 .paths(PathSelectors.any())
                 .build();
     }
+
+    //TODO
+    //How to document each endpoint
 }
