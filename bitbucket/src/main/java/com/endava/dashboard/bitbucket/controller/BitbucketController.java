@@ -1,10 +1,12 @@
 package com.endava.dashboard.bitbucket.controller;
 
+import com.endava.dashboard.bitbucket.parse.ParsePojo;
 import com.endava.dashboard.bitbucket.responseobjects.Commit;
 import com.endava.dashboard.bitbucket.responseobjects.Project;
 import com.endava.dashboard.bitbucket.responseobjects.PullRequest;
 import com.endava.dashboard.bitbucket.responseobjects.Repository;
 import com.endava.dashboard.bitbucket.services.CommitService;
+import com.endava.dashboard.bitbucket.services.ProjectService;
 import com.endava.dashboard.bitbucket.services.PullRequestService;
 import com.endava.dashboard.bitbucket.services.RepositoryService;
 import com.endava.dashboard.bitbucket.settings.BitbucketConf;
@@ -30,12 +32,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequestMapping(path = "/v2")
 public class BitbucketController {
 
+    private ProjectService projectService;
     private RepositoryService repositoryService;
     private CommitService commitService;
     private PullRequestService pullRequestService;
 
     @Autowired
-    public BitbucketController(RepositoryService repositoryService, CommitService commitService, PullRequestService pullRequestService) {
+    public BitbucketController(ProjectService projectService,
+                               RepositoryService repositoryService,
+                               CommitService commitService,
+                               PullRequestService pullRequestService) {
+        this.projectService = projectService;
         this.repositoryService = repositoryService;
         this.commitService = commitService;
         this.pullRequestService = pullRequestService;
@@ -47,9 +54,9 @@ public class BitbucketController {
         return new HttpEntity<>(headers);
     }
 
-    private List<Commit> getCommits(String project, String repo, Long projectId, Long repositoryId) {
+    private List<Commit> getCommits(String project, String repo, Long projectId, Long repositoryId, String numberCommits) {
 
-        URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/commits?limit=1000&permission=REPO_WRITE");
+        URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/commits?limit="+numberCommits+"&permission=REPO_WRITE");
 
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> s;
@@ -81,28 +88,19 @@ public class BitbucketController {
 
         ja = (JSONArray) jsonObject.get("values");
 
+        System.out.println("El tamaño es:" + ja.size());
+
         for (Object item : ja) {
-
             JSONObject jo = (JSONObject) item;
-
-            String id = (String) jo.get("id");
-            String displayId = (String) jo.get("displayId");
-            String author = (String)((JSONObject)jo.get("author")).get("name");
-            String authorEmail = (String)((JSONObject)jo.get("author")).get("emailAddress");
-            Long committerTimestamp = (Long) jo.get("committerTimestamp");
-            String message = (String) jo.get("message");
-
-            Commit commit = new Commit(id,displayId,projectId,repositoryId,author,authorEmail,committerTimestamp,message);
-
-            commitList.add(commit);
+            commitList.add(ParsePojo.getCommitFromJsonObject(projectId, repositoryId, jo));
         }
 
         return commitList;
     }
 
-    private List<PullRequest> getPullRequests(String project, String repo, Long projectId, Long repositoryId) {
+    private List<PullRequest> getPullRequests(String project, String repo, Long projectId, Long repositoryId, String numberPullRequest) {
 
-        URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/pull-requests?limit=10&state=ALL&role=AUTHOR");
+        URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/pull-requests?limit="+numberPullRequest+"&state=ALL&role=AUTHOR");
 
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> s;
@@ -134,25 +132,8 @@ public class BitbucketController {
         ja = (JSONArray) jsonObject.get("values");
 
         for (Object item : ja) {
-
             JSONObject jo = (JSONObject) item;
-
-            Long id = (Long) jo.get("id");
-            String title = (String) jo.get("title");
-            String state = (String) jo.get("state");
-            Long createdDateTimestamp = (Long) jo.get("createdDate");
-            Long updatedDateTimestamp = (Long) jo.get("updatedDate");
-            String fromBranch = (String)((JSONObject) jo.get("fromRef")).get("id");
-            String toBranch = (String)((JSONObject) jo.get("toRef")).get("id");
-            String repository = (String)((JSONObject)((JSONObject) jo.get("toRef")).get("repository")).get("slug");
-            String author = (String)((JSONObject)((JSONObject) jo.get("author")).get("user")).get("name");
-            String link = (String)((JSONObject)((JSONArray)((JSONObject) jo.get("links")).get("self")).get(0)).get("href");
-
-            PullRequest pullRequest = new PullRequest(id,projectId,repositoryId,title,state,createdDateTimestamp,updatedDateTimestamp,
-                    fromBranch,toBranch,repository,author,link);
-
-            pullRequestList.add(pullRequest);
-
+            pullRequestList.add(ParsePojo.getPullRequestFromJsonObject(projectId, repositoryId, jo));
         }
 
         return pullRequestList;
@@ -160,9 +141,14 @@ public class BitbucketController {
 
     @PostMapping(path = "/{projectSlug}/repos/{repositorySlug}")
     @ResponseBody
-    public ResponseEntity<Void> addRepository(@PathVariable("projectSlug") String projectSlug,
-                                              @PathVariable("repositorySlug") String repositorySlug,
-                                              @RequestParam(value = "branch",required = false) String branch) {
+    public ResponseEntity<Void> addRepository(@PathVariable("projectSlug")
+                                                          String projectSlug,
+                                              @PathVariable("repositorySlug")
+                                                          String repositorySlug,
+                                              @RequestParam(value = "numberCommits", required = false, defaultValue = "100")
+                                                          String numberCommits,
+                                              @RequestParam(value = "numberPullRequest", required = false, defaultValue = "10")
+                                                          String numberPullRequest) {
 
         URI uriProject = URI.create(BitbucketConf.API_URL + "/projects/"+projectSlug);
         URI uriRepository = URI.create(BitbucketConf.API_URL + "/projects/"+projectSlug+"/repos/"+repositorySlug);
@@ -170,9 +156,6 @@ public class BitbucketController {
         RestTemplate rest = new RestTemplate();
         ResponseEntity<String> projectResponse;
         ResponseEntity<String> repositoryResponse;
-
-        Project project;
-        Repository repository;
 
         try {
             projectResponse = rest.exchange(uriProject, HttpMethod.GET, basicCredentials(), String.class);
@@ -199,37 +182,41 @@ public class BitbucketController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        //Project
-        Long id = (Long) jsonProjectObject.get("id");
-        String key = (String) jsonProjectObject.get("key");
-        String name = (String) jsonProjectObject.get("name");
-        String description = (String) jsonProjectObject.get("description");
-        boolean isPublic = (boolean) jsonProjectObject.get("public");
-        String type = (String) jsonProjectObject.get("type");
-        String link = (String)((JSONObject)((JSONArray)((JSONObject) jsonProjectObject.get("links")).get("self")).get(0)).get("href");
+        Project project = ParsePojo.getProjectFromJsonObject(jsonProjectObject);
+        Repository repository = ParsePojo.getRepositoryFromJsonObject(jsonRepositoryObject);
 
-        project = new Project(id,key,name,description,isPublic,type,link);
+        //Check if the repository is already in influx
+        //Repository rep = repositoryService.getRepositoryBySlug(repositorySlug).getBody();
 
-        //Repository
-        Long idRepository = (Long) jsonRepositoryObject.get("id");
-        Long projectId = (Long) ((JSONObject)jsonRepositoryObject.get("project")).get("id");
-        String slug = (String) jsonRepositoryObject.get("slug");
-        String nameRepository = (String) jsonRepositoryObject.get("name");
-        String state = (String) jsonRepositoryObject.get("state");
-        boolean isPublicRepository = (boolean) jsonRepositoryObject.get("public");
-        String linkRepository = (String)((JSONObject)((JSONArray)((JSONObject) jsonRepositoryObject.get("links")).get("self")).get(0)).get("href");
+        //if(!rep.equals(repository)) {
+        if(true) {
 
-        repository = new Repository(idRepository,projectId,slug,nameRepository,state,isPublicRepository,linkRepository);
+            //Check if the project is currently saved in database
+            //Project project1 = projectService.getProjectByKey(projectSlug).getBody();
+            //if(!project1.equals(project)) {
+            if(true) {
+                //TODO Handle error
+                projectService.addProject(project);
+            }
 
-        ResponseEntity<Void> responseEntity = repositoryService.addRepository(project,repository);
+            ResponseEntity<Void> responseEntityRepository = repositoryService.addRepository(repository);
 
-        if(responseEntity.getStatusCode().value() == 201) {
-            commitService.saveCommits(getCommits(projectSlug, repositorySlug, projectId, idRepository));
-            pullRequestService.savePullRequestsList(getPullRequests(projectSlug, repositorySlug, projectId, idRepository));
-            return new ResponseEntity<>(HttpStatus.CREATED);
-        }else {
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            if (responseEntityRepository.getStatusCode().value() == 201) {
+                commitService.saveCommits(getCommits(projectSlug, repositorySlug, project.getId(), repository.getId(), numberCommits));
+                pullRequestService.savePullRequestsList(getPullRequests(projectSlug, repositorySlug, project.getId(), repository.getId(), numberPullRequest));
+                return new ResponseEntity<>(HttpStatus.CREATED);
+            } else {
+                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
         }
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    @GetMapping(path = "/getonerepository")
+    @ResponseBody
+    public void getOneRepository() {
+        Repository rep = repositoryService.getRepositoryBySlug("wvr---website").getBody();
+        System.out.println(rep);
     }
 
     @GetMapping(path = "/grettings")

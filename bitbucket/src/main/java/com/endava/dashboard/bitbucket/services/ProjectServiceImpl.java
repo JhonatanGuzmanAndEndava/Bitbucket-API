@@ -1,6 +1,7 @@
 package com.endava.dashboard.bitbucket.services;
 
 import com.endava.dashboard.bitbucket.parse.ParsePojo;
+import com.endava.dashboard.bitbucket.responseobjects.Project;
 import com.endava.dashboard.bitbucket.responseobjects.Repository;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
@@ -13,16 +14,16 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Service
-public class RepositoryServiceImpl implements RepositoryService {
+public class ProjectServiceImpl implements ProjectService {
 
     private InfluxDB influxDB;
 
-    public RepositoryServiceImpl() {
+    public ProjectServiceImpl() {
         influxDB = InfluxDBFactory.connect(URL +":"+ PORT, USERNAME, PASSWORD);
     }
 
     @Override
-    public ResponseEntity<Void> addRepository(Repository theRepository) {
+    public ResponseEntity<Void> addProject(Project theProject) {
 
         try {
             Pong pong = influxDB.ping();
@@ -39,25 +40,25 @@ public class RepositoryServiceImpl implements RepositoryService {
                 .consistency(InfluxDB.ConsistencyLevel.ALL)
                 .build();
 
-        Point point2 = Point.measurement("repository")
+        Point point1 = Point.measurement("project")
                 .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
-                .addField("id", theRepository.getId())
-                .addField("projectId", theRepository.getProjectId())
-                .addField("slug", theRepository.getSlug())
-                .addField("name", theRepository.getName())
-                .addField("state", theRepository.getState())
-                .addField("isPublic", theRepository.isPublic())
-                .addField("link", theRepository.getLink())
+                .addField("id", theProject.getId())
+                .addField("key", theProject.getKey())
+                .addField("name", theProject.getName())
+                .addField("description", theProject.getDescription())
+                .addField("isPublic", theProject.isPublic())
+                .addField("type", theProject.getType())
+                .addField("link", theProject.getLink())
                 .build();
 
-        batchPoints.point(point2);
+        batchPoints.point(point1);
         influxDB.write(batchPoints);
 
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
     @Override
-    public ResponseEntity<Repository> getRepositoryBySlug(String repositorySlug) {
+    public ResponseEntity<Project> getProjectByKey(String projectKey) {
 
         try {
             Pong pong = influxDB.ping();
@@ -68,25 +69,24 @@ public class RepositoryServiceImpl implements RepositoryService {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        Query query = BoundParameterQuery.QueryBuilder.newQuery("SELECT * FROM repository WHERE slug = $slug")
+        Query query = BoundParameterQuery.QueryBuilder.newQuery("SELECT * FROM project WHERE key = $key")
                 .forDatabase(DATABASE)
-                .bind("slug", repositorySlug)
+                .bind("key", projectKey)
                 .create();
 
         QueryResult queryResult = influxDB.query(query);
 
-        System.out.println(queryResult);
-        /*for (QueryResult.Result result : queryResult.getResults()) {
+        //System.out.println(queryResult);
+        for (QueryResult.Result result : queryResult.getResults()) {
             for (QueryResult.Series serie: result.getSeries()) {
                 for(List<Object> obj : serie.getValues()) {
                     //Just need one row
-                    return new ResponseEntity<>(ParsePojo.getRepositoryFromInfluxObject(obj), HttpStatus.OK);
+                    return new ResponseEntity<>(ParsePojo.getProjectFromInfluxObject(obj), HttpStatus.OK);
                 }
             }
-        }*/
+        }
 
         //0 rows found
-        return new ResponseEntity<>(new Repository(), HttpStatus.OK);
+        return new ResponseEntity<>(new Project(), HttpStatus.OK);
     }
-
 }

@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity;
 
 public interface RepositoryService extends InfluxDBConnection {
 
-    ResponseEntity<Void> addRepository(Project theProject, Repository theRepository);
+    ResponseEntity<Void> addRepository(Repository theRepository);
+
+    ResponseEntity<Repository> getRepositoryBySlug(String repositorySlug);
 
 }
