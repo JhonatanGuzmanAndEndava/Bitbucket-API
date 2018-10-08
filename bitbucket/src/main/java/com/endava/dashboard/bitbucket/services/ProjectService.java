@@ -3,10 +3,12 @@ package com.endava.dashboard.bitbucket.services;
 import com.endava.dashboard.bitbucket.responseobjects.Project;
 import org.springframework.http.ResponseEntity;
 
-public interface ProjectService extends InfluxDBConnection {
+import java.util.Optional;
+
+public interface ProjectService {
 
     ResponseEntity<Void> addProject(Project theProject);
 
-    ResponseEntity<Project> getProjectByKey(String projectKey);
+    Optional<Project> getProjectByKey(String projectKey);
 
 }

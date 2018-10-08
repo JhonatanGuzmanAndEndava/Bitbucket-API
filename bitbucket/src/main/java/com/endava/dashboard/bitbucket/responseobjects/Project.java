@@ -5,14 +5,21 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
+@Entity
+@Table(name = "projects")
 public class Project {
 
+    @Id
     private Long id;
-    private String key;
+    private String keyProject;
     private String name;
     private String description;
     private boolean isPublic;

@@ -5,7 +5,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
-public interface PullRequestService extends InfluxDBConnection {
+public interface PullRequestService {
 
     void savePullRequest(PullRequest pullRequest);
 

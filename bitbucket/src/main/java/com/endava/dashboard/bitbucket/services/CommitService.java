@@ -5,7 +5,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
-public interface CommitService extends InfluxDBConnection {
+public interface CommitService {
 
     ResponseEntity<Void> saveCommits(List<Commit> commits);
 

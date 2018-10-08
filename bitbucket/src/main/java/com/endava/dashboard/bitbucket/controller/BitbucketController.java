@@ -1,5 +1,6 @@
 package com.endava.dashboard.bitbucket.controller;
 
+import com.endava.dashboard.bitbucket.exception.BitbucketCollectorException;
 import com.endava.dashboard.bitbucket.parse.ParsePojo;
 import com.endava.dashboard.bitbucket.responseobjects.Commit;
 import com.endava.dashboard.bitbucket.responseobjects.Project;
@@ -25,6 +26,7 @@ import org.springframework.web.client.RestTemplate;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @EnableScheduling
@@ -54,88 +56,65 @@ public class BitbucketController {
         return new HttpEntity<>(headers);
     }
 
+    private ResponseEntity<String> getJsonBodyFromRequest(URI uri) {
+        RestTemplate rest = new RestTemplate();
+        ResponseEntity<String> response;
+        try {
+            response = rest.exchange(uri, HttpMethod.GET, basicCredentials(), String.class);
+        }catch(HttpClientErrorException e) {
+            if(e.getRawStatusCode() == 401) {
+                System.err.println("Unauthenticated user: " + e.getMessage());
+                throw new BitbucketCollectorException("Unauthenticated user");
+            }
+            else {
+                System.err.println("Something is wrong!" + e.getMessage());
+                throw new BitbucketCollectorException("Something is wrong: Try again later");
+            }
+        }
+        return response;
+    }
+
     private List<Commit> getCommits(String project, String repo, Long projectId, Long repositoryId, String numberCommits) {
 
         URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/commits?limit="+numberCommits+"&permission=REPO_WRITE");
-
-        RestTemplate rest = new RestTemplate();
-        ResponseEntity<String> s;
-
-        List<Commit> commitList;
-
-        try {
-            s = rest.exchange(uri, HttpMethod.GET, basicCredentials(), String.class);
-        }catch(HttpClientErrorException e) {
-            if(e.getRawStatusCode() == 401)
-                System.err.println("Unauthenticated user: " + e.getMessage());
-            else
-                System.err.println("Something is wrong!" + e.getMessage());
-
-            return null;
-        }
+        List<Commit> commitList = new ArrayList<>();;
 
         JSONObject jsonObject;
         try {
-            jsonObject = (JSONObject) new JSONParser().parse(s.getBody());
+            jsonObject = (JSONObject) new JSONParser().parse(getJsonBodyFromRequest(uri).getBody());
         } catch (ParseException e) {
             System.err.println("Error reading JSON String");
-            return null;
+            throw new BitbucketCollectorException("Error reading JSON String");
         }
 
-        JSONArray ja;
-
-        commitList = new ArrayList<>();
-
-        ja = (JSONArray) jsonObject.get("values");
-
-        System.out.println("El tamaño es:" + ja.size());
+        JSONArray ja = (JSONArray) jsonObject.get("values");
 
         for (Object item : ja) {
             JSONObject jo = (JSONObject) item;
             commitList.add(ParsePojo.getCommitFromJsonObject(projectId, repositoryId, jo));
         }
-
         return commitList;
     }
 
     private List<PullRequest> getPullRequests(String project, String repo, Long projectId, Long repositoryId, String numberPullRequest) {
 
         URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/pull-requests?limit="+numberPullRequest+"&state=ALL&role=AUTHOR");
-
-        RestTemplate rest = new RestTemplate();
-        ResponseEntity<String> s;
-
-        List<PullRequest> pullRequestList;
-
-        try {
-            s = rest.exchange(uri, HttpMethod.GET, basicCredentials(), String.class);
-        }catch(HttpClientErrorException e) {
-            if(e.getRawStatusCode() == 401)
-                System.err.println("Unauthenticated user: " + e.getMessage());
-            else
-                System.err.println("Something is wrong!" + e.getMessage());
-
-            return null;
-        }
+        List<PullRequest> pullRequestList = new ArrayList<>();
 
         JSONObject jsonObject;
         try {
-            jsonObject = (JSONObject) new JSONParser().parse(s.getBody());
+            jsonObject = (JSONObject) new JSONParser().parse(getJsonBodyFromRequest(uri).getBody());
         } catch (ParseException e) {
             System.err.println("Error reading JSON String");
-            return null;
+            throw new BitbucketCollectorException("Error reading JSON String");
         }
 
-        JSONArray ja;
-        pullRequestList = new ArrayList<>();
-
-        ja = (JSONArray) jsonObject.get("values");
+        JSONArray ja = (JSONArray) jsonObject.get("values");
 
         for (Object item : ja) {
             JSONObject jo = (JSONObject) item;
             pullRequestList.add(ParsePojo.getPullRequestFromJsonObject(projectId, repositoryId, jo));
         }
-
         return pullRequestList;
     }
 
@@ -168,7 +147,9 @@ public class BitbucketController {
                 System.err.println("Something is wrong!" + e.getMessage());
                 return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
             }
-
+        }catch (Exception e) {
+            System.err.println("Something is wrong!" + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         JSONObject jsonProjectObject;
@@ -186,16 +167,12 @@ public class BitbucketController {
         Repository repository = ParsePojo.getRepositoryFromJsonObject(jsonRepositoryObject);
 
         //Check if the repository is already in influx
-        //Repository rep = repositoryService.getRepositoryBySlug(repositorySlug).getBody();
-
-        //if(!rep.equals(repository)) {
-        if(true) {
+        Optional<Repository> rep = repositoryService.getRepositoryBySlug(repositorySlug);
+        if(!rep.isPresent()) {
 
             //Check if the project is currently saved in database
-            //Project project1 = projectService.getProjectByKey(projectSlug).getBody();
-            //if(!project1.equals(project)) {
-            if(true) {
-                //TODO Handle error
+            Optional<Project> project1 = projectService.getProjectByKey(projectSlug);
+            if(!project1.isPresent()) {
                 projectService.addProject(project);
             }
 
@@ -210,13 +187,6 @@ public class BitbucketController {
             }
         }
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-    }
-
-    @GetMapping(path = "/getonerepository")
-    @ResponseBody
-    public void getOneRepository() {
-        Repository rep = repositoryService.getRepositoryBySlug("wvr---website").getBody();
-        System.out.println(rep);
     }
 
     @GetMapping(path = "/grettings")
