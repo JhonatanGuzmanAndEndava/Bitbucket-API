@@ -20,13 +20,14 @@ public class PullRequestServiceImpl implements PullRequestService {
     }
 
     @Override
-    public void savePullRequest(PullRequest pullRequest) {
-
-    }
-
-    @Override
     public ResponseEntity<Void> savePullRequestsList(List<PullRequest> pullRequestList) {
         pullRequestRepository.saveAll(pullRequestList);
         return new ResponseEntity<>(HttpStatus.CREATED);
+    }
+
+    @Override
+    public ResponseEntity<Void> deleteAllPullRequests() {
+        pullRequestRepository.deleteAll();
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }

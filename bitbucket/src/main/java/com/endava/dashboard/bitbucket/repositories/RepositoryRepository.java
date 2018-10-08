@@ -9,4 +9,5 @@ public interface RepositoryRepository extends CrudRepository<Repository, Long> {
 
     Optional<Repository> findRepositoryBySlug(String slug);
 
+    Iterable<Repository> findAllByProjectId(Long projectId);
 }

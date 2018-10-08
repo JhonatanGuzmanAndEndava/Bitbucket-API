@@ -9,4 +9,6 @@ public interface CommitService {
 
     ResponseEntity<Void> saveCommits(List<Commit> commits);
 
+    ResponseEntity<Void> deleteAllCommits();
+
 }

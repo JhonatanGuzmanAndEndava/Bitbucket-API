@@ -24,4 +24,10 @@ public class CommitServiceImpl implements CommitService {
         commitRepository.saveAll(commits);
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
+
+    @Override
+    public ResponseEntity<Void> deleteAllCommits() {
+        commitRepository.deleteAll();
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }

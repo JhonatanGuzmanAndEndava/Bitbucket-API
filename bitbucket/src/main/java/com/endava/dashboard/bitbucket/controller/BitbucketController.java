@@ -189,9 +189,28 @@ public class BitbucketController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
+    @GetMapping(path = "/update")
+    @ResponseBody
+    @Scheduled(cron = "0 15 18 * * *") //6:15pm
+    public void updateCommitsAndPullRequest() {
+        System.out.println("Running cron...");
+        commitService.deleteAllCommits();
+        pullRequestService.deleteAllPullRequests();
+
+        Iterable<Project> projects = projectService.getAllProjects();
+        for (Project project : projects) {
+            Iterable<Repository> repositories = repositoryService.getAllRepositoriesByProjectId(project.getId());
+            for (Repository repository : repositories) {
+                commitService.saveCommits(getCommits(project.getKeyProject(), repository.getSlug(), project.getId(), repository.getId(), "100"));
+                pullRequestService.savePullRequestsList(getPullRequests(project.getKeyProject(), repository.getSlug(), project.getId(), repository.getId(), "10"));
+            }
+        }
+    }
+
     @GetMapping(path = "/grettings")
     @ResponseBody
-    @Scheduled(cron = "0/5 * * ? * *")
+    //@Scheduled(cron = "0/5 * * ? * *") //5 seconds
+    //@Scheduled(cron = "0 15 18 * * *") //6:15pm
     public void grettings() {
         System.out.println("Me estoy ejecutando :v x"+value.getAndIncrement());
     }

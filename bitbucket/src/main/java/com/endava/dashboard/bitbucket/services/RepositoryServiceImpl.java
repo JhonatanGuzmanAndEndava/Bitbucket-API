@@ -30,4 +30,9 @@ public class RepositoryServiceImpl implements RepositoryService {
     public Optional<Repository> getRepositoryBySlug(String repositorySlug) {
         return repositoryRepository.findRepositoryBySlug(repositorySlug);
     }
+
+    @Override
+    public Iterable<Repository> getAllRepositoriesByProjectId(Long projectId) {
+        return repositoryRepository.findAllByProjectId(projectId);
+    }
 }

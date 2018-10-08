@@ -11,4 +11,6 @@ public interface RepositoryService {
 
     Optional<Repository> getRepositoryBySlug(String repositorySlug);
 
+    Iterable<Repository> getAllRepositoriesByProjectId(Long projectId);
+
 }

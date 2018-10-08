@@ -7,8 +7,8 @@ import java.util.List;
 
 public interface PullRequestService {
 
-    void savePullRequest(PullRequest pullRequest);
-
     ResponseEntity<Void> savePullRequestsList(List<PullRequest> pullRequestList);
+
+    ResponseEntity<Void> deleteAllPullRequests();
 
 }
