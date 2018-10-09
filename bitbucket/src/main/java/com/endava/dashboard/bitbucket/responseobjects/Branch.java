@@ -5,12 +5,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.*;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
 @ToString
 @Entity
@@ -18,11 +15,15 @@ import javax.persistence.Table;
 public class Branch {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    private Long id;
+    private Long projectId;
+    private Long repositoryId;
     private String displayId;
-    private String type;
-    private String latestCommit;
-    private String latestChangeset;
-    private boolean isDefault;
 
+    public Branch(Long projectId, Long repositoryId, String displayId) {
+        this.projectId = projectId;
+        this.repositoryId = repositoryId;
+        this.displayId = displayId;
+    }
 }

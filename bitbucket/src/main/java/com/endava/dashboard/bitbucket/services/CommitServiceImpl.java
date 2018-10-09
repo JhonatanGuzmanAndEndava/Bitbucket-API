@@ -26,6 +26,12 @@ public class CommitServiceImpl implements CommitService {
     }
 
     @Override
+    public ResponseEntity<Void> deleteCommitsByProjectIdAndRepositoryId(Long projectId, Long repositoryId) {
+        commitRepository.deleteByProjectIdAndRepositoryId(projectId, repositoryId);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @Override
     public ResponseEntity<Void> deleteAllCommits() {
         commitRepository.deleteAll();
         return new ResponseEntity<>(HttpStatus.OK);

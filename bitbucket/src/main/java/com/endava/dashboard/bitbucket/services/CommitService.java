@@ -9,6 +9,8 @@ public interface CommitService {
 
     ResponseEntity<Void> saveCommits(List<Commit> commits);
 
+    ResponseEntity<Void> deleteCommitsByProjectIdAndRepositoryId(Long projectId, Long repositoryId);
+
     ResponseEntity<Void> deleteAllCommits();
 
 }

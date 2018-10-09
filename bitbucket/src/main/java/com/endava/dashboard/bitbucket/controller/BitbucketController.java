@@ -2,14 +2,8 @@ package com.endava.dashboard.bitbucket.controller;
 
 import com.endava.dashboard.bitbucket.exception.BitbucketCollectorException;
 import com.endava.dashboard.bitbucket.parse.ParsePojo;
-import com.endava.dashboard.bitbucket.responseobjects.Commit;
-import com.endava.dashboard.bitbucket.responseobjects.Project;
-import com.endava.dashboard.bitbucket.responseobjects.PullRequest;
-import com.endava.dashboard.bitbucket.responseobjects.Repository;
-import com.endava.dashboard.bitbucket.services.CommitService;
-import com.endava.dashboard.bitbucket.services.ProjectService;
-import com.endava.dashboard.bitbucket.services.PullRequestService;
-import com.endava.dashboard.bitbucket.services.RepositoryService;
+import com.endava.dashboard.bitbucket.responseobjects.*;
+import com.endava.dashboard.bitbucket.services.*;
 import com.endava.dashboard.bitbucket.settings.BitbucketConf;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -38,16 +32,19 @@ public class BitbucketController {
     private RepositoryService repositoryService;
     private CommitService commitService;
     private PullRequestService pullRequestService;
+    private BranchService branchService;
 
     @Autowired
     public BitbucketController(ProjectService projectService,
                                RepositoryService repositoryService,
                                CommitService commitService,
-                               PullRequestService pullRequestService) {
+                               PullRequestService pullRequestService,
+                               BranchService branchService) {
         this.projectService = projectService;
         this.repositoryService = repositoryService;
         this.commitService = commitService;
         this.pullRequestService = pullRequestService;
+        this.branchService = branchService;
     }
 
     private HttpEntity basicCredentials() {
@@ -66,6 +63,10 @@ public class BitbucketController {
                 System.err.println("Unauthenticated user: " + e.getMessage());
                 throw new BitbucketCollectorException("Unauthenticated user");
             }
+            else if(e.getRawStatusCode() == 404) {
+                System.err.println("The resource does not exist" + e.getMessage());
+                throw new BitbucketCollectorException("Resource does not exist: Review the sintax for slugs and branch name");
+            }
             else {
                 System.err.println("Something is wrong!" + e.getMessage());
                 throw new BitbucketCollectorException("Something is wrong: Try again later");
@@ -74,10 +75,18 @@ public class BitbucketController {
         return response;
     }
 
-    private List<Commit> getCommits(String project, String repo, Long projectId, Long repositoryId, String numberCommits) {
+    private List<Commit> getCommits(String project, String repo, Long projectId, Long repositoryId, String numberCommits, String branch) {
 
-        URI uri = URI.create(BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/commits?limit="+numberCommits+"&permission=REPO_WRITE");
-        List<Commit> commitList = new ArrayList<>();;
+        String uriResourceString = BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/commits?limit="+numberCommits+"&permission=REPO_WRITE";
+        if(!branch.equals("master")) {
+            branch = branch.replace("/","%2F");
+            uriResourceString += "&until=refs%2Fheads%2F" + branch;
+        }
+
+        System.out.println(uriResourceString);
+
+        URI uri = URI.create(uriResourceString);
+        List<Commit> commitList = new ArrayList<>();
 
         JSONObject jsonObject;
         try {
@@ -124,6 +133,8 @@ public class BitbucketController {
                                                           String projectSlug,
                                               @PathVariable("repositorySlug")
                                                           String repositorySlug,
+                                              @RequestParam(value = "branch", required = false, defaultValue = "master")
+                                                          String branchName,
                                               @RequestParam(value = "numberCommits", required = false, defaultValue = "100")
                                                           String numberCommits,
                                               @RequestParam(value = "numberPullRequest", required = false, defaultValue = "10")
@@ -179,11 +190,31 @@ public class BitbucketController {
             ResponseEntity<Void> responseEntityRepository = repositoryService.addRepository(repository);
 
             if (responseEntityRepository.getStatusCode().value() == 201) {
-                commitService.saveCommits(getCommits(projectSlug, repositorySlug, project.getId(), repository.getId(), numberCommits));
+                commitService.saveCommits(getCommits(projectSlug, repositorySlug, project.getId(), repository.getId(), numberCommits, branchName));
                 pullRequestService.savePullRequestsList(getPullRequests(projectSlug, repositorySlug, project.getId(), repository.getId(), numberPullRequest));
+                branchService.addTheBranch(new Branch(project.getId(), repository.getId(), branchName));
                 return new ResponseEntity<>(HttpStatus.CREATED);
             } else {
                 return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        }else {
+            Optional<Branch> currentBranch = branchService.getCurrentBranchForProjectAndRepository(project.getId(), repository.getId());
+            if(!currentBranch.isPresent()) {
+                branchService.addTheBranch(new Branch(project.getId(), repository.getId(), branchName));
+            }else {
+                if(!currentBranch.get().getDisplayId().equals(branchName)) {
+
+                    List<Commit> commits = getCommits(projectSlug, repositorySlug, project.getId(), repository.getId(), numberCommits, branchName);
+                    if(commits != null) {
+                        commitService.deleteCommitsByProjectIdAndRepositoryId(project.getId(), repository.getId());
+                        commitService.saveCommits(commits);
+                        currentBranch.get().setDisplayId(branchName);
+                        branchService.addTheBranch(currentBranch.get());
+                        return new ResponseEntity<>(HttpStatus.OK);
+                    }else {
+                        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+                    }
+                }
             }
         }
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
@@ -201,7 +232,9 @@ public class BitbucketController {
         for (Project project : projects) {
             Iterable<Repository> repositories = repositoryService.getAllRepositoriesByProjectId(project.getId());
             for (Repository repository : repositories) {
-                commitService.saveCommits(getCommits(project.getKeyProject(), repository.getSlug(), project.getId(), repository.getId(), "100"));
+                Optional<Branch> currentBranch = branchService.getCurrentBranchForProjectAndRepository(project.getId(), repository.getId());
+                String branchName = currentBranch.isPresent() ? currentBranch.get().getDisplayId() : "master";
+                commitService.saveCommits(getCommits(project.getKeyProject(), repository.getSlug(), project.getId(), repository.getId(), "100", branchName));
                 pullRequestService.savePullRequestsList(getPullRequests(project.getKeyProject(), repository.getSlug(), project.getId(), repository.getId(), "10"));
             }
         }
