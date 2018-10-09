@@ -21,7 +21,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @EnableScheduling
 @RestController
@@ -220,6 +219,7 @@ public class BitbucketController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
+    //@Scheduled(cron = "0/5 * * ? * *") //5 seconds
     @GetMapping(path = "/update")
     @ResponseBody
     @Scheduled(cron = "0 15 18 * * *") //6:15pm
@@ -239,15 +239,4 @@ public class BitbucketController {
             }
         }
     }
-
-    @GetMapping(path = "/grettings")
-    @ResponseBody
-    //@Scheduled(cron = "0/5 * * ? * *") //5 seconds
-    //@Scheduled(cron = "0 15 18 * * *") //6:15pm
-    public void grettings() {
-        System.out.println("Me estoy ejecutando :v x"+value.getAndIncrement());
-    }
-
-    private AtomicInteger value = new AtomicInteger();
-
 }
