@@ -30,4 +30,10 @@ public class PullRequestServiceImpl implements PullRequestService {
         pullRequestRepository.deleteAll();
         return new ResponseEntity<>(HttpStatus.OK);
     }
+
+    @Override
+    public ResponseEntity<Void> deletePullRequestsByProjectIdAndRepositoryId(Long projectId, Long repositoryId) {
+        pullRequestRepository.deleteByProjectIdAndRepositoryId(projectId, repositoryId);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }

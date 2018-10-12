@@ -11,4 +11,5 @@ public interface PullRequestService {
 
     ResponseEntity<Void> deleteAllPullRequests();
 
+    ResponseEntity<Void> deletePullRequestsByProjectIdAndRepositoryId(Long projectId, Long repositoryId);
 }

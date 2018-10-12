@@ -74,15 +74,14 @@ public class BitbucketController {
         return response;
     }
 
-    private List<Commit> getCommits(String project, String repo, Long projectId, Long repositoryId, String numberCommits, String branch) {
+    private List<Commit> getCommits(String project, String repo, Long projectId, Long repositoryId, String numberCommits, Branch branch) {
 
-        String uriResourceString = BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/commits?limit="+numberCommits+"&permission=REPO_WRITE";
+        String uriResourceString = BitbucketConf.API_URL + "/projects/"+project+"/repos/"+repo+"/commits?limit="+numberCommits
+                +"&withCounts=true&permission=REPO_WRITE";
         if(!branch.equals("master")) {
-            branch = branch.replace("/","%2F");
-            uriResourceString += "&until=refs%2Fheads%2F" + branch;
+            String branchName = branch.getDisplayId().replace("/","%2F");
+            uriResourceString += "&until=refs%2Fheads%2F" + branchName;
         }
-
-        System.out.println(uriResourceString);
 
         URI uri = URI.create(uriResourceString);
         List<Commit> commitList = new ArrayList<>();
@@ -96,6 +95,9 @@ public class BitbucketController {
         }
 
         JSONArray ja = (JSONArray) jsonObject.get("values");
+
+        branch.setTotalCommits((Long)jsonObject.get("totalCount"));
+        branch.setTotalAuthor((Long)jsonObject.get("authorCount"));
 
         for (Object item : ja) {
             JSONObject jo = (JSONObject) item;
@@ -176,11 +178,9 @@ public class BitbucketController {
         Project project = ParsePojo.getProjectFromJsonObject(jsonProjectObject);
         Repository repository = ParsePojo.getRepositoryFromJsonObject(jsonRepositoryObject);
 
-        //Check if the repository is already in influx
         Optional<Repository> rep = repositoryService.getRepositoryBySlug(repositorySlug);
         if(!rep.isPresent()) {
 
-            //Check if the project is currently saved in database
             Optional<Project> project1 = projectService.getProjectByKey(projectSlug);
             if(!project1.isPresent()) {
                 projectService.addProject(project);
@@ -189,9 +189,10 @@ public class BitbucketController {
             ResponseEntity<Void> responseEntityRepository = repositoryService.addRepository(repository);
 
             if (responseEntityRepository.getStatusCode().value() == 201) {
-                commitService.saveCommits(getCommits(projectSlug, repositorySlug, project.getId(), repository.getId(), numberCommits, branchName));
+                Branch branch = new Branch(project.getId(), repository.getId(), branchName);
+                commitService.saveCommits(getCommits(projectSlug, repositorySlug, project.getId(), repository.getId(), numberCommits, branch));
                 pullRequestService.savePullRequestsList(getPullRequests(projectSlug, repositorySlug, project.getId(), repository.getId(), numberPullRequest));
-                branchService.addTheBranch(new Branch(project.getId(), repository.getId(), branchName));
+                branchService.addTheBranch(branch);
                 return new ResponseEntity<>(HttpStatus.CREATED);
             } else {
                 return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -199,24 +200,25 @@ public class BitbucketController {
         }else {
             Optional<Branch> currentBranch = branchService.getCurrentBranchForProjectAndRepository(project.getId(), repository.getId());
             if(!currentBranch.isPresent()) {
-                branchService.addTheBranch(new Branch(project.getId(), repository.getId(), branchName));
+                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
             }else {
-                if(!currentBranch.get().getDisplayId().equals(branchName)) {
-
-                    List<Commit> commits = getCommits(projectSlug, repositorySlug, project.getId(), repository.getId(), numberCommits, branchName);
-                    if(commits != null) {
-                        commitService.deleteCommitsByProjectIdAndRepositoryId(project.getId(), repository.getId());
-                        commitService.saveCommits(commits);
-                        currentBranch.get().setDisplayId(branchName);
-                        branchService.addTheBranch(currentBranch.get());
-                        return new ResponseEntity<>(HttpStatus.OK);
-                    }else {
-                        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+                currentBranch.get().setDisplayId(branchName);
+                List<Commit> commits = getCommits(projectSlug, repositorySlug, project.getId(), repository.getId(), numberCommits, currentBranch.get());
+                if(commits != null) {
+                    commitService.deleteCommitsByProjectIdAndRepositoryId(project.getId(), repository.getId());
+                    commitService.saveCommits(commits);
+                    currentBranch.get().setDisplayId(branchName);
+                    branchService.addTheBranch(currentBranch.get());
+                    if(!numberPullRequest.equals("10")) {
+                        pullRequestService.deletePullRequestsByProjectIdAndRepositoryId(project.getId(), repository.getId());
+                        pullRequestService.savePullRequestsList(getPullRequests(projectSlug, repositorySlug, project.getId(), repository.getId(), numberPullRequest));
                     }
+                    return new ResponseEntity<>(HttpStatus.OK);
+                }else {
+                    return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
                 }
             }
         }
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     //@Scheduled(cron = "0/5 * * ? * *") //5 seconds
@@ -233,8 +235,7 @@ public class BitbucketController {
             Iterable<Repository> repositories = repositoryService.getAllRepositoriesByProjectId(project.getId());
             for (Repository repository : repositories) {
                 Optional<Branch> currentBranch = branchService.getCurrentBranchForProjectAndRepository(project.getId(), repository.getId());
-                String branchName = currentBranch.isPresent() ? currentBranch.get().getDisplayId() : "master";
-                commitService.saveCommits(getCommits(project.getKeyProject(), repository.getSlug(), project.getId(), repository.getId(), "100", branchName));
+                commitService.saveCommits(getCommits(project.getKeyProject(), repository.getSlug(), project.getId(), repository.getId(), "100", currentBranch.get()));
                 pullRequestService.savePullRequestsList(getPullRequests(project.getKeyProject(), repository.getSlug(), project.getId(), repository.getId(), "10"));
             }
         }

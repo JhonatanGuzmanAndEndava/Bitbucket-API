@@ -20,6 +20,8 @@ public class Branch {
     private Long projectId;
     private Long repositoryId;
     private String displayId;
+    private Long totalCommits;
+    private Long totalAuthor;
 
     public Branch(Long projectId, Long repositoryId, String displayId) {
         this.projectId = projectId;
